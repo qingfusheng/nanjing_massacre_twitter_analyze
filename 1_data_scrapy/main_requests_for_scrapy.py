@@ -5,19 +5,19 @@ import requests
 import json
 
 headers = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/93.0',
-  'Accept': '*/*',
-  'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
-  'x-guest-token': '',
-  'x-twitter-client-language': 'zh-cn',
-  'x-twitter-active-user': 'yes',
-  'x-csrf-token': '25ea9d09196a6ba850201d47d7e75733',
-  'Sec-Fetch-Dest': 'empty',
-  'Sec-Fetch-Mode': 'cors',
-  'Sec-Fetch-Site': 'same-origin',
-  'authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA',
-  'Referer': 'https://twitter.com/',
-  'Connection': 'keep-alive',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/93.0',
+    'Accept': '*/*',
+    'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
+    'x-guest-token': '',
+    'x-twitter-client-language': 'zh-cn',
+    'x-twitter-active-user': 'yes',
+    'x-csrf-token': '25ea9d09196a6ba850201d47d7e75733',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+    'authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA',
+    'Referer': 'https://twitter.com/',
+    'Connection': 'keep-alive',
 }
 query_string = "nanjingmassacre"
 params = [
@@ -53,9 +53,25 @@ params = [
 ]
 
 if __name__ == "__main__":
+    # 注意注意注意，query_string的修改在上面 ↑，
     file_dir = "./filter/"
     tweet_url = 'https://twitter.com/i/api/2/search/adaptive.json'
     url_token = "https://api.twitter.com/1.1/guest/activate.json"
+    with open("recover_process.json", 'r') as f:
+        temp_content = json.loads(f.read())
+        pre_cursor, pre_number = temp_content["cursor"], temp_content["number"]
+    exe_prev = False
+    if pre_cursor != "" and pre_number != 0:
+        while True:
+            yes_or_no = input("是否继续上一次执行？")
+            if yes_or_no in ['y', 'Y']:
+                exe_prev = True
+                break
+            elif yes_or_no in ['N', 'n']:
+                exe_prev = False
+                break
+            else:
+                print("输入错误，请重新输入")
     try:
         os.mkdir(file_dir)
     except Exception as error:
@@ -65,6 +81,9 @@ if __name__ == "__main__":
     cursor_first = ""
     cursor_current = ""
     while True:
+        if exe_prev:
+            number = pre_number
+            params[0][1] = pre_cursor
         print("adaptive-"+str(number))
         token = json.loads(requests.post(url_token, headers=headers).text)['guest_token']
         headers["x-guest-token"] = token
@@ -73,16 +92,25 @@ if __name__ == "__main__":
         tweets = root['globalObjects']['tweets']
         if not tweets:
             max_try -= 1
-            cursor_temp = params[0][1]
+            """cursor_temp = params[0][1]
             params[0][1] = cursor_first
             temp_root = json.loads(requests.get(tweet_url, headers=headers, params=params).text)
             if temp_root['globalObjects']['tweets']:
                 params[0][1] = cursor_temp
-                continue
-            time.sleep(3)
+                continue"""
+            time.sleep(1)
             print("爬取错误，正在进行第"+str(10-max_try)+"次尝试")
             if max_try == 0:
-                print("爬虫结束")
+                with open("recover_process.json", "w") as f:
+                    f.write(
+                        json.dumps(
+                            {
+                                "cursor": params[0][1],
+                                "number": number
+                            }
+                        )
+                    )
+                print("爬虫暂时结束，当前进度信息已保存至recover_process.json文件中")
                 break
             continue
         print(tweets[list(tweets.keys())[0]]["created_at"])
